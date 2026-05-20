@@ -36,6 +36,8 @@ async function run() {
       console.log(user, result);
     });
 
+
+
     const roomcollection = db.collection("rooms");
 
     app.post('/addroom', async (req, res) => {
@@ -48,6 +50,16 @@ async function run() {
     app.get('/addroom', async (req, res) => {
       const rooms = await roomcollection.find().toArray();
       res.json(rooms);
+    });
+
+    app.get("/rooms/:id", async (req, res) => {
+            try {
+              const room = await roomcollection.findOne({ _id: new ObjectId(req.params.id) });
+              if (!room) return res.status(404).json({ error: "Room not found" });
+              res.json(room);
+            } catch (error) {
+              res.status(400).json({ error: "Invalid room ID" });
+            }
     });
 
 
