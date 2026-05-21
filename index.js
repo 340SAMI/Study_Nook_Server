@@ -71,6 +71,11 @@ async function run() {
       console.log(booking, result);
     });
 
+   app.get('/bookings', async (req, res) => {
+    const bookings = await bookingcollection.find().toArray();
+    res.json(bookings);
+  });
+
     app.get('/bookings/check', async (req, res) => {
       const {roomId, date, startTime, endTime} = req.query;
       const conflict = await bookingcollection.findOne({
