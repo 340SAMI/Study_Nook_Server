@@ -93,6 +93,26 @@ async function run() {
       res.json({ available: !conflict });
 
   });
+
+  app.patch('/bookings/:id', async (req, res) => {
+    try {
+        const result = await bookingcollection.updateOne(
+            { _id: new ObjectId(req.params.id) },
+            { $set: { Status: req.body.Status } }
+        );
+
+        if (result.matchedCount === 0) return res.status(404).json({ message: 'Booking not found' });
+
+        res.json({ message: 'Booking updated successfully' });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to update booking' });
+    }
+});
+
+
+
+
+
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
 } catch(error) {
