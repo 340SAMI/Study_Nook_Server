@@ -4,7 +4,7 @@ require('dotenv').config();
 const express = require('express');
 const app = express();
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId  } = require('mongodb');
 const uri = process.env.MONGO_URI;
 const PORT = process.env.port|| 8000;
 
@@ -62,8 +62,32 @@ async function run() {
             }
     });
 
+    const bookingcollection = db.collection("bookings");
 
+    app.post('/bookings', async (req, res) => {
+      const booking = req.body;
+      const result = await bookingcollection.insertOne(booking);
+      res.json(result);
+      console.log(booking, result);
+    });
 
+    app.get('/bookings/check', async (req, res) => {
+      const {roomId, date, startTime, endTime} = req.query;
+      const conflict = await bookingcollection.findOne({
+
+        roomId,
+        date,
+        Status:"Confirmed",
+        $or:  [
+      { startTime: { $lt: endTime, $gte: startTime } },
+      { endTime: { $gt: startTime, $lte: endTime } },
+      { startTime: { $lte: startTime }, endTime: { $gte: endTime } },
+    ],
+
+      });
+      res.json({ available: !conflict });
+
+  });
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
 } catch(error) {
