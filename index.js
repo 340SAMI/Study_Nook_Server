@@ -62,6 +62,16 @@ async function run() {
             }
     });
 
+    app.delete('/addroom/:id', async (req, res) => {
+      try {
+          const result = await roomcollection.deleteOne({ _id: new ObjectId(req.params.id) });
+          if (result.deletedCount === 0) return res.status(404).json({ message: 'Room not found' });
+          res.json({ message: 'Room deleted successfully' });
+      } catch (err) {
+          res.status(500).json({ message: 'Failed to delete room' });
+      }
+  });
+
     const bookingcollection = db.collection("bookings");
 
     app.post('/bookings', async (req, res) => {
