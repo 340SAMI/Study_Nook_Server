@@ -5,6 +5,7 @@ const express = require('express');
 const app = express();
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId  } = require('mongodb');
+const { createRemoteJWKSet, jwtVerify } = require('jose-cjs');
 const uri = process.env.MONGO_URI;
 const PORT = process.env.port|| 8000;
 
@@ -19,6 +20,28 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
+
+const JWKS = createRemoteJWKSet(
+  new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
+)
+const verifyToken = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader.split(" ")[1] ;
+ if(!authHeader){
+    return res.status(401).json({ error: "Unauthorized" });
+ } if(!token){
+    return res.status(401).json({ error: "Unauthorized" });
+ }
+
+  try {
+     const {payload} = await jwtVerify(token, JWKS)
+      console.log(payload)
+      next()
+  } catch (error) {
+    return res.status(401).json({ error: "Forbidden" });
+  }
+
+}
 
 
 async function run() {
@@ -52,7 +75,7 @@ async function run() {
       res.json(rooms);
     });
 
-    app.get("/rooms/:id", async (req, res) => {
+    app.get("/rooms/:id", verifyToken, async (req, res) => {
             try {
               const room = await roomcollection.findOne({ _id: new ObjectId(req.params.id) });
               if (!room) return res.status(404).json({ error: "Room not found" });
@@ -70,6 +93,20 @@ async function run() {
       } catch (err) {
           res.status(500).json({ message: 'Failed to delete room' });
       }
+  });
+
+  app.patch('/addroom/:id', async (req, res) => {
+    try {
+        const result = await roomcollection.updateOne(
+            { _id: new ObjectId(req.params.id) },
+            { $set: req.body }
+        );
+
+        if (result.matchedCount === 0) return res.status(404).json({ message: 'Room not found' });
+        res.json({ message: 'Room updated successfully' });
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to update room' });
+    }
   });
 
     const bookingcollection = db.collection("bookings");
@@ -104,20 +141,20 @@ async function run() {
 
   });
 
-  app.patch('/bookings/:id', async (req, res) => {
-    try {
-        const result = await bookingcollection.updateOne(
-            { _id: new ObjectId(req.params.id) },
-            { $set: { Status: req.body.Status } }
-        );
+      app.patch('/bookings/:id', async (req, res) => {
+        try {
+            const result = await bookingcollection.updateOne(
+                { _id: new ObjectId(req.params.id) },
+                { $set: { Status: req.body.Status } }
+            );
 
-        if (result.matchedCount === 0) return res.status(404).json({ message: 'Booking not found' });
+            if (result.matchedCount === 0) return res.status(404).json({ message: 'Booking not found' });
 
-        res.json({ message: 'Booking updated successfully' });
-    } catch (err) {
-        res.status(500).json({ message: 'Failed to update booking' });
-    }
-});
+            res.json({ message: 'Booking updated successfully' });
+        } catch (err) {
+            res.status(500).json({ message: 'Failed to update booking' });
+        }
+      });
 
 
 
@@ -125,9 +162,10 @@ async function run() {
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
-} catch(error) {
+    } 
+      catch(error) {
     await client.close();
-  }
+    }
 }
 
 run().catch(console.dir);
